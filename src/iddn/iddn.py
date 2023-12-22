@@ -1,20 +1,19 @@
 """The iDDN main functions
 
-There are two top level iDDN functions: the `ddn` and the `ddn_parallel`.
+There are two top level iDDN functions: the `iddn` and the `iddn_parallel`.
 The former one is in serial, which is easier to debug, while the latter one is in parallel.
 For smaller data sets (e.g., less than 500 nodes), the serial version is fast enough.
 The two functions should have the same functionality.
 
-Each function allow using several different methods.
+Each function allow using two different methods.
 
-- `org`: the method in DDN 2.0. This is slow for larger data sets.
 - `resi`: the method in DDN 3.0 using residual update strategy. This is suitable for larger feature number.
 - `corr`: the method in DDN 3.0 using correlation matrix update strategy. This is suitable for larger sample number.
 
 We recommend using `resi` in general case. In case you have much more samples than features, consider `corr`.
 
 The choice of two hyperparameters lambda1 and lambda2 is critical.
-We recommend running DDN with a range of parameters, and using prior knowledge to select the suitable.
+We recommend running iDDN with a range of parameters, and using prior knowledge to select the suitable.
 Alternatively, users may refer the parameter tuning tutorial for other methods of choosing the parameters.
 
 These functions also support using warm start.
@@ -26,19 +25,18 @@ However, we do not observe very significant speed up, and are not generally reco
 import numpy as np
 import joblib
 from joblib import Parallel, delayed
-from ddn3 import tools, solver
+from iddn import tools, solver
 
 
-def ddn_parallel(
+def iddn_parallel(
     g1_data,
     g2_data,
     lambda1=0.30,
     lambda2=0.10,
     threshold=1e-6,
     mthd="resi",
-    std_est="std",
-    g_rec_in=(),
     n_process=1,
+    dep_mat=None,
 ):
     """Run DDN in parallel.
 
@@ -58,10 +56,6 @@ def ddn_parallel(
         Convergence threshold.
     mthd : str
         The DDN solver to use.
-    std_est : str
-        The standardization method. The default value is fine in most cases.
-    g_rec_in : ndarray
-        The input coefficient matrix. If warm start is not needed, do not change it.
     n_process : int
         Number of cores to use. Do not exceed the number of cores in your computer.
         If set to 1, no parallelization is used.
@@ -79,14 +73,9 @@ def ddn_parallel(
     n_node = g1_data.shape[1]
     n1 = g1_data.shape[0]
     n2 = g2_data.shape[0]
-    g1_data = tools.standardize_data(g1_data, scaler=std_est)
-    g2_data = tools.standardize_data(g2_data, scaler=std_est)
-
-    if len(g_rec_in) == 0:
-        g_rec_in = np.zeros((2, n_node, n_node))
-        use_warm = False
-    else:
-        use_warm = True
+    g1_data = tools.standardize_data(g1_data)
+    g2_data = tools.standardize_data(g2_data)
+    g_rec_in = np.zeros((2, n_node, n_node))
 
     if mthd == "corr":
         corr_matrix_1 = g1_data.T @ g1_data / n1
@@ -95,22 +84,7 @@ def ddn_parallel(
         corr_matrix_1 = []
         corr_matrix_2 = []
 
-    if mthd == "org":
-        out = Parallel(n_jobs=n_process)(
-            delayed(solver.run_org)(
-                g1_data,
-                g2_data,
-                node,
-                lambda1,
-                lambda2,
-                beta1_in=g_rec_in[0][node],
-                beta2_in=g_rec_in[1][node],
-                threshold=threshold,
-                use_warm=use_warm,
-            )
-            for node in range(n_node)
-        )
-    elif mthd == "resi":
+    if mthd == "resi":
         out = Parallel(n_jobs=n_process)(
             delayed(solver.run_resi)(
                 g1_data,
@@ -121,7 +95,6 @@ def ddn_parallel(
                 beta1_in=g_rec_in[0][node],
                 beta2_in=g_rec_in[1][node],
                 threshold=threshold,
-                use_warm=use_warm,
             )
             for node in range(n_node)
         )
@@ -136,7 +109,6 @@ def ddn_parallel(
                 beta1_in=g_rec_in[0][node],
                 beta2_in=g_rec_in[1][node],
                 threshold=threshold,
-                use_warm=use_warm,
             )
             for node in range(n_node)
         )
@@ -151,15 +123,14 @@ def ddn_parallel(
     return g_rec
 
 
-def ddn(
+def iddn(
     g1_data,
     g2_data,
     lambda1=0.30,
     lambda2=0.10,
     threshold=1e-6,
     mthd="resi",
-    std_est="std",
-    g_rec_in=(),
+    dep_mat=None,
 ):
     """Run DDN.
 
@@ -179,10 +150,6 @@ def ddn(
         Convergence threshold.
     mthd : str
         The DDN solver to use.
-    std_est : str
-        The standardization method. The default value is fine in most cases.
-    g_rec_in : ndarray
-        The input coefficient matrix. If warm start is not needed, do not change it.
 
     Returns
     -------
@@ -194,14 +161,11 @@ def ddn(
     n_node = g1_data.shape[1]
     n1 = g1_data.shape[0]
     n2 = g2_data.shape[0]
-    g1_data = tools.standardize_data(g1_data, scaler=std_est)
-    g2_data = tools.standardize_data(g2_data, scaler=std_est)
-
-    if len(g_rec_in) == 0:
-        g_rec_in = np.zeros((2, n_node, n_node))
-        use_warm = False
-    else:
-        use_warm = True
+    g1_data = tools.standardize_data(g1_data)
+    g2_data = tools.standardize_data(g2_data)
+    g_rec_in = np.zeros((2, n_node, n_node))
+    if dep_mat is None:
+        dep_mat = np.ones((n_node, n_node))
 
     if mthd == "corr":
         corr_matrix_1 = g1_data.T @ g1_data / n1
@@ -215,41 +179,33 @@ def ddn(
         beta1_in = g_rec_in[0][node]
         beta2_in = g_rec_in[1][node]
 
-        if mthd == "org":
-            beta1, beta2 = solver.run_org(
-                g1_data,
-                g2_data,
-                node,
-                lambda1,
-                lambda2,
-                beta1_in,
-                beta2_in,
-                threshold,
-                use_warm,
-            )
-        elif mthd == "resi":
+        dep_cur = dep_mat[:, node]
+        if np.sum(dep_cur) == 0:
+            continue
+
+        if mthd == "resi":
             beta1, beta2 = solver.run_resi(
                 g1_data,
                 g2_data,
                 node,
+                dep_cur,
                 lambda1,
                 lambda2,
                 beta1_in,
                 beta2_in,
                 threshold,
-                use_warm,
             )
         elif mthd == "corr":
             beta1, beta2 = solver.run_corr(
                 corr_matrix_1,
                 corr_matrix_2,
                 node,
+                dep_cur,
                 lambda1,
                 lambda2,
                 beta1_in,
                 beta2_in,
                 threshold,
-                use_warm,
             )
         else:
             print("Method not implemented")
