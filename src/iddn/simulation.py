@@ -8,7 +8,8 @@ It also contains some helper functions for other simulation functions.
 """
 
 import numpy as np
-from ddn3 import tools
+import networkx as nx
+from iddn import tools
 
 
 def create_pair_graph(
@@ -61,7 +62,73 @@ def create_pair_graph(
     return g1_prec, g2_prec
 
 
-def prep_sim_from_two_omega(omega1, omega2):
+def create_three_layers_graph(
+    n_node=10,
+    p=0.2,
+    v=0.3,
+    u=0.1,
+    n_add_each=2,
+):
+    # expression edges with random graph.
+    g_rand = nx.erdos_renyi_graph(n_node, p)
+    d = dict()
+    for i in range(n_node):
+        d[i] = f"e_{i}"
+    g_rand: nx.Graph = nx.relabel_nodes(g_rand, d)
+
+    # edge with DNA copy number.
+    for i in range(n_node):
+        g_rand.add_edge(f"e_{i}", f"g_{i}")
+
+    # edges with TF protein. One TF for each expression node
+    for i in range(n_node):
+        g_rand.add_edge(f"e_{i}", f"p_{i}")
+
+    # create two conditions from the common `g_rand` graph
+    # add two extra edges in each condition
+    mat_adj = nx.adjacency_matrix(g_rand).todense()
+    mat0 = np.copy(mat_adj[:n_node, :n_node])
+    mat0[np.triu_indices_from(mat0)] = 1
+    x, y = np.where(mat0 == 0)
+    idx_sel = np.random.choice(len(x), n_add_each * 2)
+    idx_sel1 = idx_sel[:n_add_each]
+    idx_sel2 = idx_sel[n_add_each:]
+
+    g1_rand = g_rand.copy()
+    for i in idx_sel1:
+        g1_rand.add_edge(f"e_{x[i]}", f"e_{y[i]}")
+        # print(i, x[i], y[i])
+    g2_rand = g_rand.copy()
+    for i in idx_sel2:
+        g2_rand.add_edge(f"e_{x[i]}", f"e_{y[i]}")
+        # print(i, x[i], y[i])
+
+    # make positive definite precision matrix 
+    mat1_adj = nx.adjacency_matrix(g1_rand).todense()
+    mat2_adj = nx.adjacency_matrix(g2_rand).todense()
+    g1_prec = make_precision_positive_definite(mat1_adj, v=v, u=u)
+    g2_prec = make_precision_positive_definite(mat2_adj, v=v, u=u)
+
+    # dependency matrix
+    # each column is the feature, the nodes that go to that node is 1
+    dep_mat = np.zeros((n_node*3, n_node*3))
+    dep_mat[:n_node,:n_node] = 1
+    dep_mat[n_node:2*n_node,:n_node] = np.eye(n_node)
+    dep_mat[2*n_node:,:n_node] = np.eye(n_node)
+
+    return g1_prec, g2_prec, dep_mat, mat1_adj, mat2_adj
+
+
+def make_precision_positive_definite(mat_adj, v=0.3, u=0.1):
+    n_node = mat_adj.shape[0]
+    x_eigval, _ = np.linalg.eigh(mat_adj * v)
+    mat_prec = mat_adj * v + (np.abs(np.min(x_eigval)) + u) * np.eye(n_node)
+    mat_prec_eigval, _ = np.linalg.eigh(mat_prec)
+    print(np.min(mat_prec_eigval))
+    return mat_prec
+
+
+def get_info_from_precision(omega1, omega2):
     """Get covariance matrices and adjacency matrices from two precisions matrices
 
     Parameters
@@ -82,13 +149,13 @@ def prep_sim_from_two_omega(omega1, omega2):
     diff_gt : ndarray
         Adjacency matrix of differential network
     """
-    g1_cov, _ = create_cov_prec_mat(omega1)
-    g2_cov, _ = create_cov_prec_mat(omega2)
-    comm_gt, diff_gt = tools.get_common_diff_net_topo([omega1, omega2])
+    g1_cov, _ = get_covariance_scaled_from_precision(omega1)
+    g2_cov, _ = get_covariance_scaled_from_precision(omega2)
+    comm_gt, diff_gt = tools.get_common_diff_adjacency([omega1, omega2])
     return g1_cov, g2_cov, comm_gt, diff_gt
 
 
-def gen_sample_two_conditions(g1_cov, g2_cov, n1, n2):
+def generate_sample_two_conditions(g1_cov, g2_cov, n1, n2):
     """Generate multivariante normal samples for two conditions
 
     Let P be the number of features.
@@ -111,15 +178,15 @@ def gen_sample_two_conditions(g1_cov, g2_cov, n1, n2):
     dat2 : ndarray
         Generated samples for condition 2. Shape (n2, P)
     """
-    dat1 = tools.gen_mv(g1_cov, n1)
-    dat2 = tools.gen_mv(g2_cov, n2)
+    dat1 = tools.generate_mvn_samples(g1_cov, n1)
+    dat2 = tools.generate_mvn_samples(g2_cov, n2)
     return dat1, dat2
 
 
-def create_cov_prec_mat(prec_mat_in):
+def get_covariance_scaled_from_precision(prec_mat_in):
     """Create covariance from temporary precision matrix
 
-    Each variable now have unit variance. 
+    Each variable now have unit variance.
     We also provide the corresponding precision matrix.
 
     We follow [Peng 2009] and do not use the d_ij term as the JGL paper.
@@ -144,7 +211,7 @@ def create_cov_prec_mat(prec_mat_in):
     return cov_mat, prec_mat
 
 
-def simple_data():
+def get_data_demo():
     """Generate example data for the tutorial"""
     n_node = 40
     n_sample1 = 100
@@ -152,9 +219,10 @@ def simple_data():
     n_shuf = 5
     g1_prec, g2_prec = create_pair_graph(n_node=n_node, corr=0.75, n_shuf=n_shuf)
     gene_names = [f"Gene{i}" for i in range(n_node)]
-    g1_cov, _ = create_cov_prec_mat(g1_prec)
-    g2_cov, _ = create_cov_prec_mat(g2_prec)
-    dat1 = tools.gen_mv(g1_cov, n_sample1)
-    dat2 = tools.gen_mv(g2_cov, n_sample2)
+
+    g1_cov, _ = get_covariance_scaled_from_precision(g1_prec)
+    g2_cov, _ = get_covariance_scaled_from_precision(g2_prec)
+    dat1 = tools.generate_mvn_samples(g1_cov, n_sample1)
+    dat2 = tools.generate_mvn_samples(g2_cov, n_sample2)
 
     return dat1, dat2, gene_names

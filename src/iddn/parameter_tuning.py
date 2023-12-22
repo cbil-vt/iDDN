@@ -23,8 +23,7 @@ By utilizing the prior knowledge, it is more likely to obtain the network that i
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.stats import norm
-from ddn3 import ddn
-from ddn3 import tools
+from iddn import tools
 
 
 class DDNParameterSearch:
@@ -468,8 +467,8 @@ def cv_two_lambda(
                     lambda2=lambda2,
                     mthd=mthd,
                 )
-                g1_net_est = tools.get_net_topo_from_mat(g_beta_est[0])
-                g2_net_est = tools.get_net_topo_from_mat(g_beta_est[1])
+                g1_net_est = tools.clean_adjacency(g_beta_est[0])
+                g2_net_est = tools.clean_adjacency(g_beta_est[1])
                 g1_coef = calculate_regression(g1_train, g1_net_est)
                 g1_coef[np.arange(n_node), np.arange(n_node)] = 0
                 g2_coef = calculate_regression(g2_train, g2_net_est)

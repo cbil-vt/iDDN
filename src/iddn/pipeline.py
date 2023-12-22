@@ -1,8 +1,8 @@
 """The convenience wrappers for running DDN
 """
 
-from ddn3 import ddn, tools_export
-from ddn3.simulation import simple_data
+from iddn import iddn, tools_export
+from iddn.simulation import get_data_demo
 
 
 def ddn_pipeline(dat1, dat2, gene_names, lambda1=0.3, lambda2=0.1):
@@ -33,7 +33,7 @@ def ddn_pipeline(dat1, dat2, gene_names, lambda1=0.3, lambda2=0.1):
         List of nodes that have at least one neighboring nodes
 
     """
-    omega1, omega2 = ddn.ddn(dat1, dat2, lambda1, lambda2)
+    omega1, omega2 = iddn.iddn(dat1, dat2, lambda1, lambda2)
     (
         comm_edge,
         _,

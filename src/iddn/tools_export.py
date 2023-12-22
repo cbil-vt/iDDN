@@ -3,7 +3,7 @@
 
 import numpy as np
 import pandas as pd
-from ddn3 import tools
+from iddn import tools
 
 
 def get_diff_comm_net_for_plot(omega1, omega2, gene_names):
@@ -45,8 +45,8 @@ def get_diff_comm_net_for_plot(omega1, omega2, gene_names):
     omega_comm = (omega1 + omega2) / 2
 
     # apply a small threshold to obtain adjacency matrices
-    g1 = tools.get_net_topo_from_mat(omega1)
-    g2 = tools.get_net_topo_from_mat(omega2)
+    g1 = tools.clean_adjacency(omega1)
+    g2 = tools.clean_adjacency(omega2)
     gene_names = np.array(gene_names)
 
     # find common and differential networks
