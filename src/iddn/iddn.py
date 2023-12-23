@@ -38,7 +38,9 @@ def iddn_parallel(
     n_process=1,
     dep_mat=None,
 ):
-    """Run DDN in parallel.
+    """Run iDDN in parallel.
+
+    TODO: iDDN
 
     Denote P be the number features. N1 be the sample size for condition 1, and N2 for condition 2.
 
@@ -126,8 +128,8 @@ def iddn_parallel(
 def iddn(
     g1_data,
     g2_data,
-    lambda1=0.30,
-    lambda2=0.10,
+    lambda1,
+    lambda2,
     threshold=1e-6,
     mthd="resi",
     dep_mat=None,
@@ -142,14 +144,16 @@ def iddn(
         The data from condition 1
     g2_data : array_like, shape N2 by P
         The data from condition 2
-    lambda1 : float
-        DDN parameter lambda1.
-    lambda2 : float
-        Not used. Must be 0.
+    lambda1 : array_like
+        DDN parameter lambda1. Each node pair has individual value.
+    lambda2 : array_like
+        DDN parameter labmda2. Each node pair has individual value.
     threshold : float
         Convergence threshold.
     mthd : str
         The DDN solver to use.
+    dep_mat : array_like
+        Dependency prior. A node pair is allow if set to 1.
 
     Returns
     -------
@@ -180,6 +184,8 @@ def iddn(
         beta2_in = g_rec_in[1][node]
 
         dep_cur = dep_mat[:, node]
+        lambda1_cur = lambda1[:, node]
+        lambda2_cur = lambda2[:, node]
         if np.sum(dep_cur) == 0:
             continue
 
@@ -189,8 +195,8 @@ def iddn(
                 g2_data,
                 node,
                 dep_cur,
-                lambda1,
-                lambda2,
+                lambda1_cur,
+                lambda2_cur,
                 beta1_in,
                 beta2_in,
                 threshold,
@@ -201,8 +207,8 @@ def iddn(
                 corr_matrix_2,
                 node,
                 dep_cur,
-                lambda1,
-                lambda2,
+                lambda1_cur,
+                lambda2_cur,
                 beta1_in,
                 beta2_in,
                 threshold,

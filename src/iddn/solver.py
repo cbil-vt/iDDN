@@ -30,9 +30,9 @@ def run_resi(
         Index of the current node that serve as the response variable.
     dep_cur : array_like
         The neighbors that points to current node
-    lambda1 : float
+    lambda1 : array_like
         DDN parameter lambda1.
-    lambda2 : float
+    lambda2 : array_like
         DDN parameter lambda2.
     beta1_in : array_like, length P
         Initial beta for condition 1. If initialization is not needed, use an array of all zeros.
@@ -87,6 +87,8 @@ def run_corr(
     threshold,
 ):
     """The wrapper that calls the DDN 3.0 correlation matrix update algorithm
+    
+    TODO: iDDN
 
     Parameters
     ----------

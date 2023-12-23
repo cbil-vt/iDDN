@@ -66,8 +66,7 @@ It will compare output of DDN with reference values. It tests DDN with various a
 
 ## Contributing
 
-Please report bugs in the issues. 
-You may also email the authors directly: Yingzhou Lu (lyz66@vt.edu), Yizhi Wang (yzwang@vt.edu), or Yue Wang (yuewang@vt.edu).
+Please report bugs in the issues or email Yizhi Wang (yzwang@vt.edu).
 If you are interested in adding features or fixing bug, feel free to contact us.
 
 ## License

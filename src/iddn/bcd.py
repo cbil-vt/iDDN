@@ -49,9 +49,9 @@ def bcd_residual(
         Index of the current node that serve as the response variable.
     dep_nodes : array_like
         Nodes that point to current node will be 1. Shape (P,)
-    lambda1 : float
+    lambda1 : array_like
         DDN parameter lambda1.
-    lambda2 : float
+    lambda2 : array_like
         DDN parameter lambda2.
     threshold : float
         Convergence threshold.
@@ -89,6 +89,8 @@ def bcd_residual(
                 continue
             if dep_nodes[i] == 0:
                 continue
+            lambda1_now = lambda1[i]
+            lambda2_now = lambda2[i]
 
             iter_count = iter_count + 1
             k = i
@@ -98,7 +100,7 @@ def bcd_residual(
             rho1 = np.sum(y1_resi * X1[:, k]) / n1
             rho2 = np.sum(y2_resi * X2[:, k]) / n2
 
-            beta2d = solve2d(rho1, rho2, lambda1, lambda2)
+            beta2d = solve2d(rho1, rho2, lambda1_now, lambda2_now)
             beta1[k] = beta2d[0]
             beta2[k] = beta2d[1]
 
@@ -129,6 +131,8 @@ def bcd_corr(
     max_iter=100000,
 ):
     """BCD algorithm for DDN using correlation matrix update strategy
+
+    TODO: iDDN
 
     This approach is more suitable for larger sample sizes.
     The algorithm allows warm start, which requires initial `beta_in`.
