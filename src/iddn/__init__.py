@@ -1,3 +1,3 @@
 # read version from installed package
 from importlib.metadata import version
-__version__ = version("ddn3")
+__version__ = version("iddn")

@@ -104,7 +104,7 @@ class ThreeLayerGraph:
         mat0 = np.copy(mat_adj[:n_node, :n_node])
         mat0[np.triu_indices_from(mat0)] = 1
         x, y = np.where(mat0 == 0)
-        idx_sel = np.random.choice(len(x), n_add_each * 2)
+        idx_sel = np.random.choice(len(x), n_add_each * 2, replace=False)
         idx_sel1 = idx_sel[:n_add_each]
         idx_sel2 = idx_sel[n_add_each:]
 
@@ -164,3 +164,44 @@ class ThreeLayerGraph:
         dat1 = tools.generate_mvn_samples(self.g1_cov, n1)
         dat2 = tools.generate_mvn_samples(self.g2_cov, n2)
         return dat1, dat2
+
+
+def gen_graphs_preset(g_rand, ratio_diff=0.25, v=0.3, u=0.1):
+    # g_rand = nx.erdos_renyi_graph(n=10, p=0.2)
+    mat_adj = nx.adjacency_matrix(g_rand).todense()
+    mat_adj = mat_adj * (1-np.eye(len(mat_adj)))  # remove self loop
+    omega1, omega2 = make_two_omega_from_one(mat_adj, ratio_diff=ratio_diff)
+    omega1 = omega1 + np.eye(len(omega1))
+    omega2 = omega2 + np.eye(len(omega2))
+    g1_prec = tools.make_precision_positive_definite(omega1, v=v, u=u)
+    g2_prec = tools.make_precision_positive_definite(omega2, v=v, u=u)
+    return mat_adj, g1_prec, g2_prec
+
+
+def make_two_omega_from_one(omega, ratio_diff=0.25, fill_value=1.0, thr=1e-4):
+    n_node = len(omega)
+    n_edge = round((np.sum(np.abs(omega) > thr) - n_node) / 2)
+
+    # all valid candidates for new entries
+    msk = np.tril(np.ones(n_node), k=-1)
+    omega_lower = np.copy(omega)
+    omega_lower[msk == 0] = 100.0
+    idx_zero = np.where(np.abs(omega_lower) < thr)
+
+    # generate two conditions
+    n_diff = round(n_edge * ratio_diff)
+    idx_chg = np.random.choice(len(idx_zero[0]), n_diff * 2, replace=False)
+    idx_chg1 = idx_chg[:n_diff]
+    idx_chg2 = idx_chg[n_diff:]
+
+    diff1 = np.zeros((n_node, n_node))
+    diff1[idx_zero[0][idx_chg1], idx_zero[1][idx_chg1]] = fill_value
+    diff1 = diff1 + diff1.T
+    omega1 = omega + diff1
+
+    diff2 = np.zeros((n_node, n_node))
+    diff2[idx_zero[0][idx_chg2], idx_zero[1][idx_chg2]] = fill_value
+    diff2 = diff2 + diff2.T
+    omega2 = omega + diff2
+
+    return omega1, omega2
