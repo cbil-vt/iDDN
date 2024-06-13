@@ -31,16 +31,16 @@ from iddn import tools, solver
 def iddn_parallel(
     g1_data,
     g2_data,
-    lambda1=0.30,
-    lambda2=0.10,
-    threshold=1e-6,
-    mthd="resi",
-    n_process=1,
+    lambda1,
+    lambda2,
     dep_mat=None,
+    mthd="resi",
+    threshold=1e-6,
+    n_process=1,
 ):
     """Run iDDN in parallel.
 
-    TODO: iDDN
+    TODO: iDDN correlation update
 
     Denote P be the number features. N1 be the sample size for condition 1, and N2 for condition 2.
 
@@ -73,18 +73,21 @@ def iddn_parallel(
         n_process = int(joblib.cpu_count() / 2)
 
     n_node = g1_data.shape[1]
-    n1 = g1_data.shape[0]
-    n2 = g2_data.shape[0]
+    # n1 = g1_data.shape[0]
+    # n2 = g2_data.shape[0]
     g1_data = tools.standardize_data(g1_data)
     g2_data = tools.standardize_data(g2_data)
     g_rec_in = np.zeros((2, n_node, n_node))
 
-    if mthd == "corr":
-        corr_matrix_1 = g1_data.T @ g1_data / n1
-        corr_matrix_2 = g2_data.T @ g2_data / n2
-    else:
-        corr_matrix_1 = []
-        corr_matrix_2 = []
+    if dep_mat is None:
+        dep_mat = np.ones((n_node, n_node))
+
+    # if mthd == "corr":
+    #     corr_matrix_1 = g1_data.T @ g1_data / n1
+    #     corr_matrix_2 = g2_data.T @ g2_data / n2
+    # else:
+    #     corr_matrix_1 = []
+    #     corr_matrix_2 = []
 
     if mthd == "resi":
         out = Parallel(n_jobs=n_process)(
@@ -92,35 +95,37 @@ def iddn_parallel(
                 g1_data,
                 g2_data,
                 node,
-                lambda1,
-                lambda2,
+                dep_mat[:, node],
+                lambda1[:, node],
+                lambda2[:, node],
                 beta1_in=g_rec_in[0][node],
                 beta2_in=g_rec_in[1][node],
                 threshold=threshold,
+                use_warm=False,
             )
             for node in range(n_node)
         )
-    elif mthd == "corr":
-        out = Parallel(n_jobs=n_process)(
-            delayed(solver.run_corr)(
-                corr_matrix_1,
-                corr_matrix_2,
-                node,
-                lambda1,
-                lambda2,
-                beta1_in=g_rec_in[0][node],
-                beta2_in=g_rec_in[1][node],
-                threshold=threshold,
-            )
-            for node in range(n_node)
-        )
+    # elif mthd == "corr":
+    #     out = Parallel(n_jobs=n_process)(
+    #         delayed(solver.run_corr)(
+    #             corr_matrix_1,
+    #             corr_matrix_2,
+    #             node,
+    #             lambda1,
+    #             lambda2,
+    #             beta1_in=g_rec_in[0][node],
+    #             beta2_in=g_rec_in[1][node],
+    #             threshold=threshold,
+    #         )
+    #         for node in range(n_node)
+    #     )
     else:
         raise ("Method not implemented")
 
     g_rec = np.zeros((2, n_node, n_node))
     for node in range(n_node):
-        g_rec[0, node, :] = out[node][0]
-        g_rec[1, node, :] = out[node][1]
+        g_rec[0, :, node] = out[node][0]
+        g_rec[1, :, node] = out[node][1]
 
     return g_rec
 
@@ -130,9 +135,10 @@ def iddn(
     g2_data,
     lambda1,
     lambda2,
-    threshold=1e-6,
-    mthd="resi",
     dep_mat=None,
+    mthd="resi",
+    threshold=1e-6,
+    g_rec_in=None,
 ):
     """Run DDN.
 
@@ -167,7 +173,13 @@ def iddn(
     n2 = g2_data.shape[0]
     g1_data = tools.standardize_data(g1_data)
     g2_data = tools.standardize_data(g2_data)
-    g_rec_in = np.zeros((2, n_node, n_node))
+    
+    if g_rec_in is None:
+        use_warm = False
+        g_rec_in = np.zeros((2, n_node, n_node))
+    else:
+        use_warm = True
+
     if dep_mat is None:
         dep_mat = np.ones((n_node, n_node))
 
@@ -200,6 +212,7 @@ def iddn(
                 beta1_in,
                 beta2_in,
                 threshold,
+                use_warm=use_warm,
             )
         elif mthd == "corr":
             beta1, beta2 = solver.run_corr(
@@ -217,7 +230,7 @@ def iddn(
             print("Method not implemented")
             break
 
-        g_rec[0, node, :] = beta1
-        g_rec[1, node, :] = beta2
+        g_rec[0, :, node] = beta1
+        g_rec[1, :, node] = beta2
 
     return g_rec

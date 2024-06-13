@@ -15,6 +15,7 @@ def run_resi(
     beta1_in,
     beta2_in,
     threshold,
+    use_warm=False,
 ):
     """The wrapper that calls the DDN 3.0 residual update algorithm
 
@@ -49,9 +50,23 @@ def run_resi(
         Estimated beta for `node` in condition 2.
 
     """
+    if np.sum(dep_cur) == 0:
+        return beta1_in, beta2_in
+
     beta_in = np.concatenate((beta1_in, beta2_in))
-    y1_resi = np.copy(g1_data[:, node])
-    y2_resi = np.copy(g2_data[:, node])
+
+    if use_warm:
+        beta1_in_x = np.copy(beta1_in)
+        beta2_in_x = np.copy(beta2_in)
+        beta1_in_x[node] = 0
+        beta2_in_x[node] = 0
+        y1_resi = g1_data[:, node] - np.dot(g1_data, beta1_in_x)
+        y2_resi = g2_data[:, node] - np.dot(g2_data, beta2_in_x)
+    else:
+        y1_resi = np.copy(g1_data[:, node])
+        y2_resi = np.copy(g2_data[:, node])
+    # y1_resi = np.copy(g1_data[:, node])
+    # y2_resi = np.copy(g2_data[:, node])
 
     N_NODE = g1_data.shape[1]
 
