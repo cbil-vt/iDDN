@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "iddn"
-version = "0.2.0"
+version = "0.2.1"
 description = "Multi-omics dependency network analysis under two conditions"
 authors = ["Yizhi Wang"]
 license = "MIT"

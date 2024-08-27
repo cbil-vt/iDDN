@@ -55,6 +55,9 @@ For more details and examples, check the [documentation](https://iddn.readthedoc
 which includes four tutorials and the API reference.
 The tutorials can also be found in the `docs/notebooks` folder.
 
+For details about the code to run simulations and make figures in the paper,
+check out the repository [here](https://github.com/cbil-vt/iddn_paper).
+
 ## Tests
 
 To run tests, go to the folder of DDN3 source code, then run `pytest`.
