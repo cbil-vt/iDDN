@@ -56,7 +56,7 @@ which includes four tutorials and the API reference.
 The tutorials can also be found in the `docs/notebooks` folder.
 
 For details about the code to run simulations and make figures in the paper,
-check out the repository [here](https://github.com/cbil-vt/iddn_paper).
+check out the [repository here](https://github.com/cbil-vt/iddn_experiments).
 
 ## Tests
 
