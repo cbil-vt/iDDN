@@ -5,6 +5,7 @@
 :maxdepth: 1
 :hidden:
 
+../README.md
 notebooks/Tutorial_1_quick_start.ipynb
 notebooks/Tutorial_2_constraints.ipynb
 notebooks/Tutorial_3_visualize_networks.ipynb

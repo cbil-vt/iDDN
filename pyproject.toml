@@ -5,12 +5,9 @@ description = "Multi-omics dependency network analysis under two conditions"
 authors = ["Yizhi Wang"]
 license = "MIT"
 readme = "README.md"
-packages = [
-    { include = "src/iddn" },
-    { include = "src/iddn_data" },
-]
 include = [
-    { path = "tests", format = ["sdist", "wheel"] }
+    { path = "tests", format = ["sdist", "wheel"] },
+    { path = "src", format = ["sdist", "wheel"] }
 ]
 
 [tool.poetry.dependencies]
