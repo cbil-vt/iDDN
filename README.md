@@ -7,7 +7,7 @@ which is especially useful for genomics, proteomics, and other biomedical studie
 This repository provides the source code and examples of using iDDN.
 
 
-![image info](./src/iddn_data/iddn_overview.png)
+![image info](img/iddn_overview.png)
 
 ## Installation
 ### Option 1: install from PyPI
