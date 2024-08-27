@@ -1,12 +1,14 @@
 """Block coordinate descent for iDDN
 
-This module implements the original block coordinate descent in [1], as well as various accelerated versions.
-Most methods are also Numba accelerated, except for `bcd_org_old`, which is left for comparison purposes.
+This module implements the block coordinate descent in [1].
+Most methods are also Numba accelerated.
 
-For data with lots of samples, consider using `bcd_corr`.
-For data with lots of features, the `bcd_residual` is faster.
+For iddn_data with lots of samples, consider using `bcd_corr`.
+For iddn_data with lots of features, the `bcd_residual` is faster.
 
-[1] Zhang, Bai, and Yue Wang. "Learning structural changes of Gaussian graphical models in controlled experiments." UAI (2010).
+[1] Fu, Yi, et al. "DDN3. 0: Determining significant rewiring of biological
+network structure with differential dependency networks." Bioinformatics (2024).
+
 """
 
 import numpy as np
@@ -27,28 +29,28 @@ def bcd_residual(
     threshold,
     max_iter=10000,
 ):
-    """BCD algorithm for DDN using residual update strategy
+    """BCD algorithm for iDDN using residual update strategy
 
     The algorithm allows warm start, which requires initial `beta_in`, `y1_resi`, and `y2_resi`.
     See `run_resi` on how to prepare these inputs.
-    Denote P be the number features. N1 be the sample size for condition 1, and N2 for condition 2.
+    Denote `P` be the number features. N1 be the sample size for condition 1, and N2 for condition 2.
 
     Parameters
     ----------
-    beta_in : array_like, length 2P
+    beta_in : (2P) array_like
         Initial beta. If initialization is not needed, use an array of all zeros
-    X1 : array_like, shape N1 by P
-        The data from condition 1
-    X2 : array_like, shape N2 by P
-        The data from condition 2
-    y1_resi : array_like, shape N1 by 1
+    X1 : (N1,P) array_like
+        The iddn_data from condition 1
+    X2 : (N2,P) array_like
+        The iddn_data from condition 2
+    y1_resi : (N1,1) array_like
         The initial residual signal for condition 1. If warm start is not used, it is column CurrIdx of X1.
-    y2_resi : array_like, shape N2 by 1
+    y2_resi : (N2,1) array_like
         The initial residual signal for condition 2. If warm start is not used, it is column CurrIdx of X2.
     cur_node : int
         Index of the current node that serve as the response variable.
-    dep_nodes : array_like
-        Nodes that point to current node will be 1. Shape (P,)
+    dep_nodes : (P) array_like
+        Nodes that point to current node will be 1.
     lambda1 : array_like
         DDN parameter lambda1.
     lambda2 : array_like
@@ -89,8 +91,8 @@ def bcd_residual(
                 continue
             if dep_nodes[i] == 0:
                 continue
-            lambda1_now = lambda1[i]
-            lambda2_now = lambda2[i]
+            lambda1_now = float(lambda1[i])
+            lambda2_now = float(lambda2[i])
 
             iter_count = iter_count + 1
             k = i
@@ -130,9 +132,7 @@ def bcd_corr(
     threshold=1e-6,
     max_iter=100000,
 ):
-    """BCD algorithm for DDN using correlation matrix update strategy
-
-    TODO: iDDN
+    """BCD algorithm for iDDN using correlation matrix update strategy
 
     This approach is more suitable for larger sample sizes.
     The algorithm allows warm start, which requires initial `beta_in`.
@@ -144,9 +144,11 @@ def bcd_corr(
         Initial beta. If initialization is not needed, use an array of all zeros
     cur_node : int
         Index of the current node that serve as the response variable.
-    lambda1 : float
+    dep_nodes : (P) array_like
+        Nodes that point to current node will be 1.
+    lambda1 : array_like
         DDN parameter lambda1.
-    lambda2 : float
+    lambda2 : array_like
         DDN parameter lambda2.
     corr_matrix_1 : array_like, P by P
         Correlation matrix for condition 1
@@ -183,6 +185,8 @@ def bcd_corr(
                 continue
             if dep_nodes[k] == 0:
                 continue
+            lambda1_now = float(lambda1[k])
+            lambda2_now = float(lambda2[k])
             iter_count = iter_count + 1
 
             betaBar1 = -beta1
@@ -195,7 +199,7 @@ def bcd_corr(
             rho1 = np.sum(betaBar1 * corr_matrix_1[:, k])
             rho2 = np.sum(betaBar2 * corr_matrix_2[:, k])
 
-            beta2d = solve2d(rho1, rho2, lambda1, lambda2)
+            beta2d = solve2d(rho1, rho2, lambda1_now, lambda2_now)
             beta1[k] = beta2d[0]
             beta2[k] = beta2d[1]
 

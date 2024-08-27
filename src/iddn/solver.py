@@ -1,4 +1,4 @@
-"""Wrapper functions for calling the BCD algorithms
+"""Wrapper functions for calling the BCD algorithms used in iDDN
 """
 
 import numpy as np
@@ -15,21 +15,20 @@ def run_resi(
     beta1_in,
     beta2_in,
     threshold,
-    use_warm=False,
 ):
-    """The wrapper that calls the DDN 3.0 residual update algorithm
+    """The wrapper that calls the iDDN residual update algorithm
 
     Denote P be the number features. N1 be the sample size for condition 1, and N2 for condition 2.
 
     Parameters
     ----------
     g1_data : array_like, shape N1 by P
-        The data from condition 1
+        The iddn_data from condition 1
     g2_data : array_like, shape N2 by P
-        The data from condition 2
+        The iddn_data from condition 2
     node : int
         Index of the current node that serve as the response variable.
-    dep_cur : array_like
+    dep_cur : (P) array_like
         The neighbors that points to current node
     lambda1 : array_like
         DDN parameter lambda1.
@@ -55,22 +54,11 @@ def run_resi(
 
     beta_in = np.concatenate((beta1_in, beta2_in))
 
-    if use_warm:
-        beta1_in_x = np.copy(beta1_in)
-        beta2_in_x = np.copy(beta2_in)
-        beta1_in_x[node] = 0
-        beta2_in_x[node] = 0
-        y1_resi = g1_data[:, node] - np.dot(g1_data, beta1_in_x)
-        y2_resi = g2_data[:, node] - np.dot(g2_data, beta2_in_x)
-    else:
-        y1_resi = np.copy(g1_data[:, node])
-        y2_resi = np.copy(g2_data[:, node])
-    # y1_resi = np.copy(g1_data[:, node])
-    # y2_resi = np.copy(g2_data[:, node])
+    y1_resi = np.copy(g1_data[:, node])
+    y2_resi = np.copy(g2_data[:, node])
 
     N_NODE = g1_data.shape[1]
 
-    # beta = bcd_residual(g1_data, g2_data, node, lambda1, lambda2, threshold)
     beta, _, _ = bcd.bcd_residual(
         beta_in,
         g1_data,
@@ -83,7 +71,6 @@ def run_resi(
         lambda2,
         threshold,
     )
-    # n_iter.append(r)
     beta1 = np.array(beta[:N_NODE])
     beta2 = np.array(beta[N_NODE:])
 
@@ -101,9 +88,7 @@ def run_corr(
     beta2_in,
     threshold,
 ):
-    """The wrapper that calls the DDN 3.0 correlation matrix update algorithm
-    
-    TODO: iDDN
+    """The wrapper that calls the iDDN correlation matrix update algorithm
 
     Parameters
     ----------
@@ -138,6 +123,7 @@ def run_corr(
     beta, _, _ = bcd.bcd_corr(
         beta_in,
         node,
+        dep_cur,
         lambda1,
         lambda2,
         corr_matrix_1,

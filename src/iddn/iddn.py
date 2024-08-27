@@ -1,9 +1,9 @@
 """The iDDN main functions
 
 There are two top level iDDN functions: the `iddn` and the `iddn_parallel`.
-The former one is in serial, which is easier to debug, while the latter one is in parallel.
-For smaller data sets (e.g., less than 500 nodes), the serial version is fast enough.
-The two functions should have the same functionality.
+The former one is in serial, while the latter one is in parallel.
+For smaller iddn_data sets (e.g., less than 500 nodes), the serial version can be faster.
+The two functions works the same.
 
 Each function allow using two different methods.
 
@@ -16,16 +16,12 @@ The choice of two hyperparameters lambda1 and lambda2 is critical.
 We recommend running iDDN with a range of parameters, and using prior knowledge to select the suitable.
 Alternatively, users may refer the parameter tuning tutorial for other methods of choosing the parameters.
 
-These functions also support using warm start.
-To use this function, input the coefficient matrix from the previous call of DDN.
-However, we do not observe very significant speed up, and are not generally recommended.
-
 """
 
 import numpy as np
 import joblib
 from joblib import Parallel, delayed
-from iddn import tools, solver
+from iddn import solver
 
 
 def iddn_parallel(
@@ -40,24 +36,24 @@ def iddn_parallel(
 ):
     """Run iDDN in parallel.
 
-    TODO: iDDN correlation update
-
     Denote P be the number features. N1 be the sample size for condition 1, and N2 for condition 2.
 
     Parameters
     ----------
     g1_data : array_like, shape N1 by P
-        The data from condition 1
+        The iddn_data from condition 1
     g2_data : array_like, shape N2 by P
-        The data from condition 2
-    lambda1 : float
+        The iddn_data from condition 2
+    lambda1 : array_like
         DDN parameter lambda1.
-    lambda2 : float
+    lambda2 : array_like
         Not used. Must be 0.
+    dep_mat : (P,P) array_like
+        The constraint or dependency matrix. If elements `[i,j]` is 1, we allow edge from `i` to `j`.
     threshold : float
         Convergence threshold.
     mthd : str
-        The DDN solver to use.
+        The iDDN solver to use.
     n_process : int
         Number of cores to use. Do not exceed the number of cores in your computer.
         If set to 1, no parallelization is used.
@@ -73,21 +69,21 @@ def iddn_parallel(
         n_process = int(joblib.cpu_count() / 2)
 
     n_node = g1_data.shape[1]
-    # n1 = g1_data.shape[0]
-    # n2 = g2_data.shape[0]
-    g1_data = tools.standardize_data(g1_data)
-    g2_data = tools.standardize_data(g2_data)
+    n1 = g1_data.shape[0]
+    n2 = g2_data.shape[0]
+    g1_data = standardize_data(g1_data)
+    g2_data = standardize_data(g2_data)
     g_rec_in = np.zeros((2, n_node, n_node))
 
     if dep_mat is None:
         dep_mat = np.ones((n_node, n_node))
 
-    # if mthd == "corr":
-    #     corr_matrix_1 = g1_data.T @ g1_data / n1
-    #     corr_matrix_2 = g2_data.T @ g2_data / n2
-    # else:
-    #     corr_matrix_1 = []
-    #     corr_matrix_2 = []
+    if mthd == "corr":
+        corr_matrix_1 = g1_data.T @ g1_data / n1
+        corr_matrix_2 = g2_data.T @ g2_data / n2
+    else:
+        corr_matrix_1 = []
+        corr_matrix_2 = []
 
     if mthd == "resi":
         out = Parallel(n_jobs=n_process)(
@@ -101,24 +97,24 @@ def iddn_parallel(
                 beta1_in=g_rec_in[0][node],
                 beta2_in=g_rec_in[1][node],
                 threshold=threshold,
-                use_warm=False,
             )
             for node in range(n_node)
         )
-    # elif mthd == "corr":
-    #     out = Parallel(n_jobs=n_process)(
-    #         delayed(solver.run_corr)(
-    #             corr_matrix_1,
-    #             corr_matrix_2,
-    #             node,
-    #             lambda1,
-    #             lambda2,
-    #             beta1_in=g_rec_in[0][node],
-    #             beta2_in=g_rec_in[1][node],
-    #             threshold=threshold,
-    #         )
-    #         for node in range(n_node)
-    #     )
+    elif mthd == "corr":
+        out = Parallel(n_jobs=n_process)(
+            delayed(solver.run_corr)(
+                corr_matrix_1,
+                corr_matrix_2,
+                node,
+                dep_mat[:, node],
+                lambda1[:, node],
+                lambda2[:, node],
+                beta1_in=g_rec_in[0][node],
+                beta2_in=g_rec_in[1][node],
+                threshold=threshold,
+            )
+            for node in range(n_node)
+        )
     else:
         raise ("Method not implemented")
 
@@ -138,7 +134,6 @@ def iddn(
     dep_mat=None,
     mthd="resi",
     threshold=1e-6,
-    g_rec_in=None,
 ):
     """Run DDN.
 
@@ -146,20 +141,20 @@ def iddn(
 
     Parameters
     ----------
-    g1_data : array_like, shape N1 by P
-        The data from condition 1
-    g2_data : array_like, shape N2 by P
-        The data from condition 2
-    lambda1 : array_like
+    g1_data : (N1, P) array_like
+        The iddn_data from condition 1
+    g2_data : (N2, P) array_like
+        The iddn_data from condition 2
+    lambda1 : (P,P) array_like
         DDN parameter lambda1. Each node pair has individual value.
-    lambda2 : array_like
+    lambda2 : (P,P) array_like
         DDN parameter labmda2. Each node pair has individual value.
+    dep_mat : (P,P) array_like
+        Dependency prior. A node pair is allow if set to 1.
     threshold : float
         Convergence threshold.
     mthd : str
         The DDN solver to use.
-    dep_mat : array_like
-        Dependency prior. A node pair is allow if set to 1.
 
     Returns
     -------
@@ -171,14 +166,9 @@ def iddn(
     n_node = g1_data.shape[1]
     n1 = g1_data.shape[0]
     n2 = g2_data.shape[0]
-    g1_data = tools.standardize_data(g1_data)
-    g2_data = tools.standardize_data(g2_data)
-    
-    if g_rec_in is None:
-        use_warm = False
-        g_rec_in = np.zeros((2, n_node, n_node))
-    else:
-        use_warm = True
+    g1_data = standardize_data(g1_data)
+    g2_data = standardize_data(g2_data)
+    g_rec_in = np.zeros((2, n_node, n_node))
 
     if dep_mat is None:
         dep_mat = np.ones((n_node, n_node))
@@ -212,7 +202,6 @@ def iddn(
                 beta1_in,
                 beta2_in,
                 threshold,
-                use_warm=use_warm,
             )
         elif mthd == "corr":
             beta1, beta2 = solver.run_corr(
@@ -234,3 +223,10 @@ def iddn(
         g_rec[1, :, node] = beta2
 
     return g_rec
+
+
+def standardize_data(data):
+    """Standadize each column of the input iddn_data"""
+    dat_mean = np.mean(data, axis=0)
+    dat_std = np.std(data, axis=0)
+    return (data - dat_mean) / dat_std

@@ -6,9 +6,9 @@
 
 # -- Project information -----------------------------------------------------
 
-project = u"ddn3"
-copyright = u"2023, Minta Lu and Yizhi Wang"
-author = u"Minta Lu and Yizhi Wang"
+project = "iddn"
+copyright = "2024, Yizhi Wang"
+author = "Yizhi Wang"
 
 # -- General configuration ---------------------------------------------------
 
@@ -20,7 +20,7 @@ extensions = [
     "autoapi.extension",
     "sphinx.ext.napoleon",
     "sphinx.ext.viewcode",
-    'sphinx.ext.mathjax',
+    "sphinx.ext.mathjax",
 ]
 autoapi_dirs = ["../src"]
 
