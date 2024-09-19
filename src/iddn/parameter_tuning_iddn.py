@@ -153,15 +153,7 @@ def calculate_regression(data, topo_est, cores=8, n_max=100):
     """Linear regression based on estimated network topology
 
     For each variable, use all its neighbors as predictors and find the regression coefficients.
-    This is calculated for each condition.
-
-    This is an example of regression operation:
-    >>> x = np.array([[-1,-1,1,1.0], [1,1,-1,-1]]).T
-    >>> y = np.array([1,1,-1,-1.0])
-    >>> out = np.linalg.lstsq(x, y, rcond=None)
-    >>> out[0]
-
-    Let `P` be the number of features.
+    This is calculated for each condition. Let `P` be the number of features.
 
     Parameters
     ----------
@@ -180,6 +172,14 @@ def calculate_regression(data, topo_est, cores=8, n_max=100):
     -------
     g_asso : (P,P) array_like
         Regression coefficients
+
+    Examples
+    --------
+    This is an example of regression operation used in this function:
+    >>> x = np.array([[-1,-1,1,1.0], [1,1,-1,-1]]).T
+    >>> y = np.array([1,1,-1,-1.0])
+    >>> out = np.linalg.lstsq(x, y, rcond=None)
+    >>> out[0]
 
     """
     n_fea = data.shape[1]
