@@ -51,7 +51,7 @@ dep_mat = example["dep_mat"]
 result = tools.iddn_basic_pipeline(dat1, dat2, dep_mat, lambda1=0.15, lambda2=0.05)
 ```
 
-For more details and examples, check the [documentation](https://iddn.readthedocs.io/en/latest/), 
+For more details and examples, check the [documentation](https://iddn.readthedocs.io/), 
 which includes four tutorials and the API reference.
 The tutorials can also be found in the `docs/notebooks` folder.
 
