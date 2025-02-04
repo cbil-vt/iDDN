@@ -224,8 +224,8 @@ def draw_network_labels(
             x1n = x1 / nn
             y1n = y1 / nn
 
-            x_ext = x + x1n * (len(label) / 2 * font_size_lst[cnt] / 72 + d_min / 4 * 2)
-            y_ext = y + y1n * (len(label) / 2 * font_size_lst[cnt] / 72 + d_min / 4 * 2)
+            x_ext = x + x1n * (len(label) / 2 * font_size_lst[cnt] / 72 + d_min / 4 * 5)
+            y_ext = y + y1n * (len(label) / 2 * font_size_lst[cnt] / 72 + d_min / 4 * 5)
 
             _ = ax.text(
                 x_ext,
@@ -253,7 +253,7 @@ def draw_network_labels(
                 x_ext,
                 y_ext,
                 label,
-                size=font_size_lst[cnt],
+                size=font_size_lst[cnt]*0.8,
                 color=font_col_lst[cnt],
                 family="sans-serif",
                 weight="normal",

@@ -164,6 +164,7 @@ def draw_multi_layer_network(
                 [p0[0], p1[0]],
                 [p0[1], p1[1]],
                 color=col,
+                alpha=0.4,
                 linewidth=wt,
                 linestyle=sty,
             )
