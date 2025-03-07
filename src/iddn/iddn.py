@@ -33,6 +33,7 @@ def iddn_parallel(
     mthd="resi",
     threshold=1e-6,
     n_process=1,
+    output_sparse=False,
 ):
     """Run iDDN in parallel.
 
@@ -44,10 +45,10 @@ def iddn_parallel(
         The iddn_data from condition 1
     g2_data : array_like, shape N2 by P
         The iddn_data from condition 2
-    lambda1 : array_like
+    lambda1 : array_like or float
         DDN parameter lambda1.
-    lambda2 : array_like
-        Not used. Must be 0.
+    lambda2 : array_like or float
+        DDN parameter lambda2
     dep_mat : (P,P) array_like
         The constraint or dependency matrix. If elements `[i,j]` is 1, we allow edge from `i` to `j`.
     threshold : float
@@ -73,7 +74,8 @@ def iddn_parallel(
     n2 = g2_data.shape[0]
     g1_data = standardize_data(g1_data)
     g2_data = standardize_data(g2_data)
-    g_rec_in = np.zeros((2, n_node, n_node))
+    # g_rec_in = np.zeros((2, n_node, n_node))
+    g_rec_in_0 = np.zeros(n_node)
 
     if dep_mat is None:
         dep_mat = np.ones((n_node, n_node))
@@ -85,45 +87,89 @@ def iddn_parallel(
         corr_matrix_1 = []
         corr_matrix_2 = []
 
-    if mthd == "resi":
-        out = Parallel(n_jobs=n_process)(
-            delayed(solver.run_resi)(
-                g1_data,
-                g2_data,
-                node,
-                dep_mat[:, node],
-                lambda1[:, node],
-                lambda2[:, node],
-                beta1_in=g_rec_in[0][node],
-                beta2_in=g_rec_in[1][node],
-                threshold=threshold,
+    if type(lambda1)==float:
+        lambda1x = np.ones(n_node)*lambda1
+        lambda2x = np.ones(n_node)*lambda2
+        if mthd == "resi":
+            out = Parallel(n_jobs=n_process, verbose=10)(
+                delayed(solver.run_resi)(
+                    g1_data,
+                    g2_data,
+                    node,
+                    dep_mat[:, node],
+                    lambda1x,
+                    lambda2x,
+                    beta1_in=g_rec_in_0,
+                    beta2_in=g_rec_in_0,
+                    threshold=threshold,
+                    output_sparse=output_sparse,
+                )
+                for node in range(n_node)
             )
-            for node in range(n_node)
-        )
-    elif mthd == "corr":
-        out = Parallel(n_jobs=n_process)(
-            delayed(solver.run_corr)(
-                corr_matrix_1,
-                corr_matrix_2,
-                node,
-                dep_mat[:, node],
-                lambda1[:, node],
-                lambda2[:, node],
-                beta1_in=g_rec_in[0][node],
-                beta2_in=g_rec_in[1][node],
-                threshold=threshold,
+        elif mthd == "corr":
+            out = Parallel(n_jobs=n_process)(
+                delayed(solver.run_corr)(
+                    corr_matrix_1,
+                    corr_matrix_2,
+                    node,
+                    dep_mat[:, node],
+                    lambda1x,
+                    lambda2x,
+                    beta1_in=g_rec_in_0,
+                    beta2_in=g_rec_in_0,
+                    threshold=threshold,
+                )
+                for node in range(n_node)
             )
-            for node in range(n_node)
-        )
+        else:
+            raise ("Method not implemented")
+        pass
+
+        return out
     else:
-        raise ("Method not implemented")
+        if mthd == "resi":
+            out = Parallel(n_jobs=n_process, verbose=10)(
+                delayed(solver.run_resi)(
+                    g1_data,
+                    g2_data,
+                    node,
+                    dep_mat[:, node],
+                    lambda1[:, node],
+                    lambda2[:, node],
+                    beta1_in=g_rec_in_0,
+                    beta2_in=g_rec_in_0,
+                    # beta1_in=g_rec_in[0][node],
+                    # beta2_in=g_rec_in[1][node],
+                    threshold=threshold,
+                )
+                for node in range(n_node)
+            )
+        elif mthd == "corr":
+            out = Parallel(n_jobs=n_process)(
+                delayed(solver.run_corr)(
+                    corr_matrix_1,
+                    corr_matrix_2,
+                    node,
+                    dep_mat[:, node],
+                    lambda1[:, node],
+                    lambda2[:, node],
+                    beta1_in=g_rec_in_0,
+                    beta2_in=g_rec_in_0,
+                    # beta1_in=g_rec_in[0][node],
+                    # beta2_in=g_rec_in[1][node],
+                    threshold=threshold,
+                )
+                for node in range(n_node)
+            )
+        else:
+            raise ("Method not implemented")
 
-    g_rec = np.zeros((2, n_node, n_node))
-    for node in range(n_node):
-        g_rec[0, :, node] = out[node][0]
-        g_rec[1, :, node] = out[node][1]
+        g_rec = np.zeros((2, n_node, n_node))
+        for node in range(n_node):
+            g_rec[0, :, node] = out[node][0]
+            g_rec[1, :, node] = out[node][1]
 
-    return g_rec
+        return g_rec
 
 
 def iddn(
@@ -134,6 +180,7 @@ def iddn(
     dep_mat=None,
     mthd="resi",
     threshold=1e-6,
+    output_sparse=False,
 ):
     """Run DDN.
 
@@ -168,7 +215,8 @@ def iddn(
     n2 = g2_data.shape[0]
     g1_data = standardize_data(g1_data)
     g2_data = standardize_data(g2_data)
-    g_rec_in = np.zeros((2, n_node, n_node))
+    g_rec_in_0 = np.zeros(n_node)
+    # g_rec_in = np.zeros((2, n_node, n_node))
 
     if dep_mat is None:
         dep_mat = np.ones((n_node, n_node))
@@ -180,14 +228,26 @@ def iddn(
         corr_matrix_1 = []
         corr_matrix_2 = []
 
-    g_rec = np.zeros((2, n_node, n_node))
+    if output_sparse:
+        out = []
+    else:
+        g_rec = np.zeros((2, n_node, n_node))
+
     for node in range(n_node):
-        beta1_in = g_rec_in[0][node]
-        beta2_in = g_rec_in[1][node]
+        beta1_in = g_rec_in_0
+        beta2_in = g_rec_in_0
+        # beta1_in = g_rec_in[0][node]
+        # beta2_in = g_rec_in[1][node]
 
         dep_cur = dep_mat[:, node]
-        lambda1_cur = lambda1[:, node]
-        lambda2_cur = lambda2[:, node]
+
+        if type(lambda1)==float:
+            lambda1_cur = np.ones(n_node)*lambda1
+            lambda2_cur = np.ones(n_node)*lambda2
+        else:
+            lambda1_cur = lambda1[:, node]
+            lambda2_cur = lambda2[:, node]
+
         if np.sum(dep_cur) == 0:
             continue
 
@@ -202,6 +262,7 @@ def iddn(
                 beta1_in,
                 beta2_in,
                 threshold,
+                output_sparse=output_sparse,
             )
         elif mthd == "corr":
             beta1, beta2 = solver.run_corr(
@@ -219,10 +280,16 @@ def iddn(
             print("Method not implemented")
             break
 
-        g_rec[0, :, node] = beta1
-        g_rec[1, :, node] = beta2
+        if output_sparse:
+            out.append([beta1, beta2])
+        else:
+            g_rec[0, :, node] = beta1
+            g_rec[1, :, node] = beta2
 
-    return g_rec
+    if output_sparse:
+        return out
+    else:
+        return g_rec
 
 
 def standardize_data(data):

@@ -3,6 +3,7 @@
 
 import numpy as np
 from iddn import bcd
+from scipy.sparse import coo_array
 
 
 def run_resi(
@@ -15,6 +16,7 @@ def run_resi(
     beta1_in,
     beta2_in,
     threshold,
+    output_sparse=False,
 ):
     """The wrapper that calls the iDDN residual update algorithm
 
@@ -73,6 +75,10 @@ def run_resi(
     )
     beta1 = np.array(beta[:N_NODE])
     beta2 = np.array(beta[N_NODE:])
+
+    if output_sparse:
+        beta1 = coo_array(beta1)
+        beta2 = coo_array(beta2)
 
     return beta1, beta2
 
